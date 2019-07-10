@@ -4,7 +4,9 @@ import math
 import numpy
 from geometry_msgs.msg import Twist
 
+
 rospy.init_node("predicter")
+
 #Current, Voltage and power levels
 voltage_sensor = 5
 current_sensor = 400 #mA
@@ -47,33 +49,34 @@ battery_Energy_max = battery_voltage*battery_current_capacity*0.001*3600 #Ws
 #Rate counter set to 1hz/Rate of power drawn
 
 rate = rospy.Rate(1)
-idle = True
 linear_speed = 0
+power_number = 0
+
 #Fucntion to calculate battery level, input is the current charge level of the battery in Ws
 def batteryCalc(currentCharge):
-    if linear_speed > 0:
-        idle = False
-    else:
-        idle = True
+    while linear_speed == 0 and not rospy.is_shutdown():
 
-    while idle and not rospy.is_shutdown():
-        rate = rospy.Rate(1)
-        print linear_speed
+
         currentCharge = (currentCharge - (power_raspib+power_raspib_plus+power_sensor+idle_power_dynamixcel))
         print("Energy:" +str(round(currentCharge,2))+"Ws")
         print("Battery: " +str(round(100*currentCharge/battery_Energy_max,2))+"%")
-        rate.sleep()
-    while not idle and not rospy.is_shutdown():
-        rate = rospy.Rate(4)
+        print(idle_power_dynamixcel)
         print linear_speed
-        power_number = 26
+
+        rate.sleep()
+
+    while linear_speed > 0 and not rospy.is_shutdown():
+        print("its not idle")
         for i in range(len(power_dynamixcel)):
             if linear_speed == power_dynamixcel[i]:
                 power_number = i
-
-        currentCharge = (currentCharge - ((power_raspib+power_raspib_plus+power_sensor)*0.25+power_dynamixcel[power_number])
+            else:
+                power_number = 26
+        currentCharge = (currentCharge - ((power_raspib+power_raspib_plus+power_sensor)+power_dynamixcel[i]))
         print("Energy:" +str(round(currentCharge,2))+"Ws")
-        print("Battery: " +str(round(100*currentCharge/battery_Energy_max,2))+power_dynamixcel[]"%")
+        print("Battery: " +str(round(100*currentCharge/battery_Energy_max,2))+"%")
+        print linear_speed)
+        print(power_dynamixcel[i])
         rate.sleep()
 
 
@@ -81,17 +84,13 @@ def batteryCalc(currentCharge):
 def callback(msg):
     global linear_speed
     linear_speed = msg.linear.x
-    print linear_speed
 
 
-
-
-
-sub = rospy.Subscriber('/cmd_vel', Twist, callback)   # Create a Subscriber object that will listen to the /counter
-
-
+sub = rospy.Subscriber('/cmd_vel', Twist, callback)
 batteryCalc(battery_Energy_max)
 rospy.spin()
+
+
 
 
 

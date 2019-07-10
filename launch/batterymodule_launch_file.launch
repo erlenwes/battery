@@ -1,5 +1,5 @@
 <launch>
     <!-- batterymodule launch file -->
-    <node pkg="batterymodule" type="batteryStateSubcriber.py" name="batteryTracker" output="screen">
+    <node pkg="batterymodule" type="batteryStateSubscriber.py" name="batteryTracker" output="screen">
     </node>
 </launch>
