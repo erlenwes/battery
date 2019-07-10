@@ -54,30 +54,32 @@ power_number = 0
 
 #Fucntion to calculate battery level, input is the current charge level of the battery in Ws
 def batteryCalc(currentCharge):
-    while linear_speed == 0 and not rospy.is_shutdown():
+    while not rospy.is_shutdown():
+
+        while linear_speed == 0 and not rospy.is_shutdown():
 
 
-        currentCharge = (currentCharge - (power_raspib+power_raspib_plus+power_sensor+idle_power_dynamixcel))
-        print("Energy:" +str(round(currentCharge,2))+"Ws")
-        print("Battery: " +str(round(100*currentCharge/battery_Energy_max,2))+"%")
-        print(idle_power_dynamixcel)
-        print linear_speed
+            currentCharge = (currentCharge - (power_raspib+power_raspib_plus+power_sensor+idle_power_dynamixcel))
+            print("Energy:" +str(round(currentCharge,2))+"Ws")
+            print("Battery: " +str(round(100*currentCharge/battery_Energy_max,2))+"%")
+            print(idle_power_dynamixcel)
+            print linear_speed
 
-        rate.sleep()
+            rate.sleep()
 
-    while linear_speed > 0 and not rospy.is_shutdown():
-        print("its not idle")
-        for i in range(len(power_dynamixcel)):
-            if linear_speed == power_dynamixcel[i]:
-                power_number = i
-            else:
-                power_number = 26
-        currentCharge = (currentCharge - ((power_raspib+power_raspib_plus+power_sensor)+power_dynamixcel[i]))
-        print("Energy:" +str(round(currentCharge,2))+"Ws")
-        print("Battery: " +str(round(100*currentCharge/battery_Energy_max,2))+"%")
-        print linear_speed)
-        print(power_dynamixcel[i])
-        rate.sleep()
+        while linear_speed > 0 and not rospy.is_shutdown():
+            print("its not idle")
+            for i in range(len(power_dynamixcel)):
+                if linear_speed == power_dynamixcel[i]:
+                    power_number = i
+                else:
+                    power_number = 26
+            currentCharge = (currentCharge - ((power_raspib+power_raspib_plus+power_sensor)+power_dynamixcel[i]))
+            print("Energy:" +str(round(currentCharge,2))+"Ws")
+            print("Battery: " +str(round(100*currentCharge/battery_Energy_max,2))+"%")
+            print(linear_speed)
+            print(power_dynamixcel[i])
+            rate.sleep()
 
 
 
