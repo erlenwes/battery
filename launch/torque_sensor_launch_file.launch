@@ -1,0 +1,5 @@
+<launch>
+    <!-- batterymodule launch file -->
+    <node pkg="batterymodule" type="torque_sensor.py" name="torque_tracker" output="screen">
+    </node>
+</launch>
