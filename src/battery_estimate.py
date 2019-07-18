@@ -135,12 +135,12 @@ def batteryCalc(currentCharge):
 
             print("------------------------------------------")
             print("Turtlebot3 idle")
-            print("Power consumption: " +str(power_comp_idle() )+"W")
-            print("Battery: " +str(round(100*currentCharge/battery.energy_max,2))+"%")
-            print("Linear Speed right: " +str(speed.linear_right)+"m/s")
-            print("Linear Speed left: " +str(speed.linear_left)+"m/s")
-            print("Power to motor: "+str(dynamixel.power_idle)+"W")
-            print("Estimated battery time remaining: " +str(battery_life_idle(currentCharge)[0])+"h"+str(battery_life(currentCharge)[1])+"m")
+            print("Power consumption: {}W".format(power_comp_idle()))
+            print("Battery: {}%".format(round(100*currentCharge/battery.energy_max,2)))
+            print("Linear Speed right: {}m/s".format(speed.linear_right))
+            print("Linear Speed left: {}m/s".format(speed.linear_left))
+            print("Power to motor: {}W".format(dynamixel.power_idle))
+            print("Estimated battery time remaining: {}h {}m".format(battery_life_idle(currentCharge)[0], battery_life(currentCharge)[1]))
 
             rate.sleep()
 
@@ -153,12 +153,12 @@ def batteryCalc(currentCharge):
 
             print("------------------------------------------")
             print("Turtlebot3 moving")
-            print("Power consumption: " +str(power_comp())+"W")
-            print("Battery: " +str(round(100*currentCharge/battery.energy_max,2))+"%")
-            print("Linear Speed right: " +str(speed.linear_right)+"m/s")
-            print("Linear Speed left: " +str(speed.linear_left)+"m/s")
-            print("Power to motor: "+str(power_to_motor())+"W")
-            print("Estimated battery time remaining: " +str(battery_life(currentCharge)[0])+"h"+str(battery_life(currentCharge)[1])+"m")
+            print("Power consumption: {}W".format(power_comp()))
+            print("Battery: {}%".format(round(100*currentCharge/battery.energy_max,2)))
+            print("Linear Speed right: {}m/s".format(speed.linear_right))
+            print("Linear Speed left:{}m/s".format(speed.linear_left))
+            print("Power to motor: {}W".format(power_to_motor()))
+            print("Estimated battery time remaining: {}h {}m").format(battery_life(currentCharge)[0],battery_life(currentCharge)[1])
 
             rate.sleep()
 
