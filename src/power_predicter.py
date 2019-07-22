@@ -6,6 +6,8 @@ from geometry_msgs.msg import PoseStamped
 from move_base_msgs.msg import MoveBaseActionGoal
 from nav_msgs.srv import GetPlan, GetPlanRequest
 from std_msgs.msg import Float32
+from actionlib_msgs.msg import GoalStatus
+from actionlib_msgs.msg import GoalStatusArray
 import numpy
 
 
@@ -64,7 +66,7 @@ class dynamixel:
     #Current calculations relative to speed
     dyna_counter = 0
     for i in numpy.arange(0, 0.27, 0.01):
-        current[dyna_counter] = (i*500/0.26)
+        current[dyna_counter] = (i*300/0.26)+300
         dyna_counter += 1
 
     #Idle power_dynamixcel
@@ -76,7 +78,10 @@ class dynamixel:
 
 class charge:
     joule = 0
-
+    maximum = 1.8*11.1*3600
+    status_before = 0
+    before = 0
+    after = 0
 
 def distance(a, b):
 
@@ -110,24 +115,42 @@ def load_charging_station(coord_x = -2.32499957085, coord_y = 1.19209289551e-07)
 
     return charging_station
 
+#Checking if the robot is on its way to a goal or if the goal is reached. Measuring the actual battery consumption from start to goal reached
+def callback_goal_status(goal_status):
+    #If prev status is moving and the new status is goal reached, then a new goal is reached and the function prints relative difference in energy measured at start and goal reached.
+    if ((goal_status.status_list[len(goal_status.status_list)-1].status) == 3 and (charge.status_before == 1)):
+        charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+        print("Actual battery usage: {} %".format(round(100*(charge.before-charge.after)/charge.maximum,3)))
+    #If current status is goal reached just update charge_before
+    if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):
+        charge.before = charge.joule
+        charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+    #If current status is moving then update charge.after until the new status is goal reached
+    if (goal_status.status_list[len(goal_status.status_list)-1].status) == 1:
+        charge.after = charge.joule
+        charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
+
+#Getting path from the current goal back to the designated charging dist_to_station
 def get_path(start, goal, tol = 1):
-
+    #Setting the counter for travel dist = 0 so that only the initial length is taken, the always updating path is taken care of later
     travel_dist.counter = 0
     rospy.wait_for_service('/move_base/NavfnROS/make_plan')
     connection_service = rospy.ServiceProxy('/move_base/NavfnROS/make_plan', GetPlan)
 
     param = GetPlanRequest()
-
     param.start = start
     param.goal = goal
     param.tolerance = tol
 
     path = connection_service(param)
     travel_dist.back_to_station = path_distance(path.plan, increment_gain = 1)
-    print("Dist to battery station: " +str(round(travel_dist.back_to_station,3))+"m")
-    num = calc_power_usage(travel_dist.to_goal_initial, travel_dist.back_to_station)
-    print("This will use: "+str(round(100*num/charge.joule,2))+"%" +"of the remaining energy")
+    eng_path = calc_power_usage(travel_dist.to_goal_initial, travel_dist.back_to_station)
+    print("-------------------------------------------------------------")
+    print("Initial distance to goal: {} m".format(round(travel_dist.to_goal_initial,3)))
+    print("Dist to battery station: {} m".format(round(travel_dist.back_to_station,3)))
+    print("Estimated battery required for safe operation: {}%".format(round(100*eng_path[2]/charge.maximum,2)))
+    print("Estimated battery required for next task: {} %".format(round(100*eng_path[0]/charge.maximum,2)))
 
 def path_distance(path, increment_gain = 5):
 
@@ -163,19 +186,18 @@ def calc_power_usage(dist_to_goal, dist_to_station):
     time_to_goal = dist_to_goal/robot_params.max_linvel_x
     time_to_station = dist_to_station/robot_params.max_linvel_x
 
-    print("Estimated time to goal: "+str(time_to_goal))
-    print("Estimated time to station from goal: "+str(time_to_station))
+    power_usage = [0]*3
 
+    power_usage[0] = time_to_goal*(mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)
+    power_usage[1] = time_to_station*(mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)
+    power_usage[2] = power_usage[0] + power_usage[1]
 
+    #print("Estimated time to goal: {}".format(time_to_goal))
+    #print("Estimated time to station from goal: {}".format(time_to_station))
+    #print("Estimated energy usage to goal: {} J".format(power_usage[2]))
+    #print("Estimated energy usage to station from goal: {} J".format(power_usage[1]))
 
-    power_usage_goal = time_to_goal*(mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)
-    power_usage_station = time_to_station*(mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)
-    power_usage_tot = power_usage_goal + power_usage_station
-
-    print("Estimated energy usage to goal: "+str(power_usage_goal)+"J")
-    print("Estimated energy usage to station from goal: "+str(power_usage_station)+"J")
-
-    return power_usage_tot
+    return power_usage
 
 
 def callback_power_comp(energy):
@@ -187,8 +209,6 @@ def callback_path(path):
 
     if travel_dist.counter < 1:
         travel_dist.to_goal_initial = path_distance(path, increment_gain = 1)
-        print("-------------------------------------------------------------------")
-        print("Initial distance to goal: " +str(round(travel_dist.to_goal_initial,3))+ "m")
         travel_dist.counter += 1
     else:
         travel_dist.to_goal = path_distance(path, increment_gain = 1)
@@ -208,9 +228,11 @@ if __name__ == '__main__':
     # Initializing
 
     rospy.init_node("power_predicter_node")
+
     rospy.Subscriber("/move_base/goal", MoveBaseActionGoal, callback_goal)
     rospy.Subscriber("move_base/NavfnROS/plan", Path, callback_path)
     rospy.Subscriber("/battery_charge", Float32, callback_power_comp)
+    rospy.Subscriber("/move_base/status", GoalStatusArray, callback_goal_status)
 
 
     rospy.spin()

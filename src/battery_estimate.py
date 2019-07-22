@@ -52,7 +52,7 @@ class dynamixel:
     #Current calculations relative to speed
     dyna_counter = 0
     for i in numpy.arange(0, 0.27, 0.01):
-        current[dyna_counter] = (i*500/0.26)
+        current[dyna_counter] = (i*300/0.26)+300
         dyna_counter += 1
 
     #Idle power_dynamixcel
@@ -140,7 +140,7 @@ def batteryCalc(currentCharge):
             print("Linear Speed right: {}m/s".format(speed.linear_right))
             print("Linear Speed left: {}m/s".format(speed.linear_left))
             print("Power to motor: {}W".format(dynamixel.power_idle))
-            print("Estimated battery time remaining: {}h {}m".format(battery_life_idle(currentCharge)[0], battery_life(currentCharge)[1]))
+            print("Estimated battery time remaining: {}h {}m".format(battery_life_idle(currentCharge)[0], battery_life_idle(currentCharge)[1]))
 
             rate.sleep()
 
