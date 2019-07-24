@@ -1,0 +1,5 @@
+<launch>
+    <!-- batterymodule launch file -->
+    <node pkg="batterymodule" type="path_power_predicter.py" name="path_power_predicter_node" output="screen">
+    </node>
+</launch>

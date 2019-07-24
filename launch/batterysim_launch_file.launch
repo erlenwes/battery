@@ -1,0 +1,5 @@
+<launch>
+    <!-- batterymodule launch file -->
+    <node pkg="batterymodule" type="batterysim.py" name="batterysim_node" output="screen">
+    </node>
+</launch>
