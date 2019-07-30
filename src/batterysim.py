@@ -17,8 +17,8 @@ class sensor:
     power = voltage*current*0.001
     #need something to indecate camera on/off, subscribe to a topic publishing this info
 class camera:
-    voltage = 0
-    current = 0
+    voltage = 5
+    current = 250
     power = voltage * current*0.001
     on = False
 
@@ -86,29 +86,52 @@ class battery:
             inc += 0.004
 
     design_current_capacity = 1.8*3600 #As
+
     used_capacity = 0
+
     #Voltage level decided by capacity-voltage curve relationship
     voltage_decider = 0
+
     voltage_level = 0
 
+    tracker = []
+
 class speed:
+
     #Motor on right side
+
     linear_right = 0
+
     #Motor on left side
+
     linear_left = 0
+
     #angular is a result of different linear speed in left and right motor
+
     angular = 0
 
 def power_comp():
+
     power_number_right = int(speed.linear_right*100)
+
     power_number_left = int(speed.linear_left*100)
 
     battery.power_usage = (mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
 
+    battery.tracker.append(battery.power_usage)
+
+    if len(battery.tracker) > (60*5):
+
+        battery.tracker.pop()
+
     battery.voltage_decider = int((battery.used_capacity/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
+
     battery.voltage_level = battery.voltage_full[battery.voltage_decider]
+
     current = battery.power_usage/battery.voltage_level
+
     battery.used_capacity += current
+
     return current
 
 def new_currentCharge(currentCharge):
@@ -117,68 +140,115 @@ def new_currentCharge(currentCharge):
     return currentCharge
 
 def power_to_motor():
+
     power_number_right = int(speed.linear_right*100)
+
     power_number_left = int(speed.linear_left*100)
+
     power = dynamixel.power_right[power_number_right] + dynamixel.power_left[power_number_left]+dynamixel.power_idle*2
 
     return power
 
 def ang_to_lin(angular):
+
     lin = angular * 0.1435
 
     return round(lin,2)
 
+
+def is_moving():
+
+    power_number_right = int(speed.linear_right*100)
+
+    power_number_left = int(speed.linear_left*100)
+
+    moving = False
+    if power_number_right > 0 or power_number_left > 0:
+        moving  = True
+
+    return moving
+
+
 def battery_life(currentCharge):
-    battery_cap = 0
+
     rest_power = 0
-    for i in range(battery.voltage_decider, len(battery.voltage_full)-(1+battery_cap)):
+
+    value = 0
+
+    for i in range(battery.voltage_decider, len(battery.voltage_full)-1):
+
         rest_power += battery.voltage_full[i]*currentCharge/(len(battery.voltage_full)-1-battery.voltage_decider)
-    value = rest_power/(3600*battery.power_usage)
+
+    if len(battery.tracker) == 1:
+
+        value = battery.tracker[0]
+
+    for x in range(len(battery.tracker)-1):
+
+        value += battery.tracker[x]/(len(battery.tracker)-1)
+
+
+    value = rest_power/(3600*(value+battery.power_usage)/2)
+
     lifetime = [0]*2
+
     lifetime[0] = int(value)
+
     lifetime[1] = int((value%1)*60)
 
     return lifetime
 
 def callback_speed_calc(velocity):
+
     speed.linear_right = abs(velocity.linear.x)
+
     speed.angular = abs(velocity.angular.z)
+
     speed.linear_left = speed.linear_right + ang_to_lin(speed.angular)
 
     if speed.angular > 0  and speed.linear_right == 0:
+
         speed.linear_right = ang_to_lin(speed.angular)
+
         speed.linear_left = speed.linear_right
 
     if speed.linear_left > 0.26:
 
         rest_speed = speed.linear_left - 0.26
+
         speed.linear_left = 0.26
+
         speed.linear_right  = abs(speed.linear_right - rest_speed)
 
 #Fucntion to calculate battery level, input is the current charge level of the battery in Ampere seconds
-def batteryCalc(design_current_capacity):
-    while not rospy.is_shutdown():
-        state ="idle"
-        power_number_right = int(speed.linear_right*100)
-        power_number_left = int(speed.linear_left*100)
+def batteryCalc(current_capacity):
 
-        if power_number_right > 0 or power_number_left > 0:
+    while not rospy.is_shutdown():
+
+        state ="idle"
+        timer = [0]*2
+
+        if is_moving():
             state = "moving"
 
-        design_current_capacity = new_currentCharge(design_current_capacity)
-        pub_charge.publish(design_current_capacity)
+
+        current_capacity = new_currentCharge(current_capacity)
+
+        pub_charge.publish(current_capacity)
+
+        timer = battery_life(current_capacity)
 
         print("------------------------------------------")
         print("Turtlebot3 {}".format(state))
-        #print("Current capcity left: {}".format(design_current_capacity))
+        #print("Current capcity left: {}".format(current_capacity))
         print("Battery voltage: {}V".format(battery.voltage_level))
         #print("Used capacity: {}".format(battery.used_capacity))
         #print("voltage decider:{} ".format(battery.voltage_decider))
-        print("Battery: {}%".format(round(100*design_current_capacity/battery.design_current_capacity,2)))
+        print("Battery: {}%".format(round(100*current_capacity/battery.design_current_capacity,2)))
         print("Linear Speed right: {}m/s".format(speed.linear_right))
         print("Linear Speed left: {}m/s".format(speed.linear_left))
         #print("Power to motor: {}W".format(power_to_motor()))
-        print("Estimated battery time remaining: {}h {}m").format(battery_life(design_current_capacity)[0],battery_life(design_current_capacity)[1])
+        print("Estimated battery time remaining: {}h {}m").format(timer[0],timer[1])
 
         rate.sleep()
 
@@ -191,8 +261,9 @@ if __name__ == '__main__':
     rate = rospy.Rate(1)
     sub = rospy.Subscriber('/cmd_vel', Twist, callback_speed_calc)
     pub_charge = rospy.Publisher('/battery_charge', Float32, queue_size=1)
-
-    batteryCalc(battery.design_current_capacity)
+    start_cap = 1.8*3600
+    battery.used_capacity = battery.design_current_capacity - start_cap
+    batteryCalc(start_cap)
 
 
 

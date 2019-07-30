@@ -65,7 +65,7 @@ class battery:
     #Voltage levels in 5% increments from 0 - 100%
     voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
     counter = 0
-    inc_const = 0.01
+    inc_const = 0.004
     power_usage = 0
     voltage_full = [0]*(len(voltage)-1)*int(1/inc_const)
 
@@ -75,7 +75,7 @@ class battery:
         for y in range(int(1/inc_const)):
             voltage_full[counter] = voltage[i]+(inc*(voltage[i+1]-voltage[i])/((y+1)-y))
             counter += 1
-            inc += 0.01
+            inc += 0.004
 
     design_current_capacity = 1.8*3600 #As
     used_capacity = 0
@@ -97,7 +97,7 @@ def power_comp():
 
     battery.power_usage = mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2
 
-    battery.voltage_decider = int((battery.used_capacity/battery.design_current_capacity)*2000)
+    battery.voltage_decider = int((battery.used_capacity/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const))
     battery.voltage_level = battery.voltage_full[battery.voltage_decider]
     current = battery.power_usage/battery.voltage_level
     battery.used_capacity += current

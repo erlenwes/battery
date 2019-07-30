@@ -34,6 +34,10 @@ class battery:
     voltage_level = 0
 
 
+
+
+
+
 class travel_dist:
 
     to_goal_initial = 0
@@ -61,7 +65,6 @@ class sensor:
 
     power = voltage*current*0.001
 
-    #need something to indecate camera on/off, subscribe to a topic publishing this info
 class camera:
 
     voltage = 0
@@ -81,12 +84,6 @@ class mcu:
     power = voltage*current*0.001
 
 class raspi:
-
-    voltage_b = 0
-
-    current_b = 0 #mA
-
-    power_b = voltage_b*current_b*0.001 #W
 
     voltage_bp = 5
 
@@ -186,25 +183,33 @@ def load_charging_station(coord_x = -2.32499957085, coord_y = 1.19209289551e-07)
 #Checking if the robot is on its way to a goal or if the goal is reached. Measuring the actual battery consumption from start to goal reached
 def callback_goal_status(goal_status):
     #If prev status is moving and the new status is goal reached, then a new goal is reached and the function prints relative difference in energy measured at start and goal reached.
-    if ((goal_status.status_list[len(goal_status.status_list)-1].status) == 3 and (charge.status_before == 1)):
 
-        charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+    if len(goal_status.status_list) >= 1:
+        try:
 
-        print("Actual battery usage: {} %".format(round(100*(charge.before-charge.after)/charge.current_capacity,3)))
+            if ((goal_status.status_list[len(goal_status.status_list)-1].status) == 3 and (charge.status_before == 1)):
 
-    #If current status is goal reached just update charge_before
-    if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):
+                charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
-        charge.before = charge.current
+                print("Actual battery usage: {} %".format(round(100*(charge.before-charge.after)/charge.current_capacity,3)))
 
-        charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+            #If current status is goal reached just update charge_before
+            if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):
 
-    #If current status is moving then update charge.after until the new status is goal reached
-    if (goal_status.status_list[len(goal_status.status_list)-1].status) == 1:
+                charge.before = charge.current
 
-        charge.after = charge.current
+                charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
-        charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+            #If current status is moving then update charge.after until the new status is goal reached
+            if (goal_status.status_list[len(goal_status.status_list)-1].status) == 1:
+
+                charge.after = charge.current
+
+                charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+
+        except:
+            print("Error with the callback goal tracker")
+
 
 
 #Getting path from the current goal back to the designated charging dist_to_station
@@ -276,7 +281,7 @@ def power_to_goal(time_to_goal):
 
         voltage_decider = int(((battery.design_current_capacity-retur[1])/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
 
-        power = (mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
+        power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
 
         voltage = battery.voltage_full[voltage_decider]
         current = power/voltage
@@ -294,7 +299,7 @@ def power_to_dock(time_to_dock, currentCharge):
 
         voltage_decider = int(((battery.design_current_capacity-new_currentCharge)/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
 
-        power = (mcu.power+(camera.on*camera.power)+raspi.power_b+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
+        power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
         voltage = battery.voltage_full[voltage_decider]
         current = power/voltage
         energy_used += current*voltage
@@ -305,9 +310,11 @@ def power_to_dock(time_to_dock, currentCharge):
 def calc_power_usage(dist_to_goal, dist_to_dock):
 
 
-    time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*1.1
 
-    time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*1.1
+
+    time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*0.8 + (dist_to_goal/(2*robot_params.max_linvel_x))*0.2
+
+    time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*0.8 + (dist_to_dock/(2*robot_params.max_linvel_x))*0.2
 
 
     power_usage = [0]*3
