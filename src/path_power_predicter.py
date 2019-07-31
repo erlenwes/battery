@@ -12,31 +12,41 @@ import numpy
 
 class battery:
     #Voltage levels in 5% increments from 100 - 0%
+
     voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
     counter = 0
+
     inc_const = 0.004
+
     power_usage = 0
+
     voltage_full = [0]*(len(voltage)-1)*int(1/inc_const)
+
     #Linear interpolation between data points from turtlebot
+
     for i in range(len(voltage)-1):
+
         inc = 0.0
 
         for y in range(int(1/inc_const)):
+
             voltage_full[counter] = voltage[i]+(inc*(voltage[i+1]-voltage[i])/((y+1)-y))
+
             counter += 1
+
             inc += 0.004
 
     design_current_capacity = 1.8*3600 #As
+
     used_capacity = 0
+
     #Voltage level decided by capacity-voltage curve relationship
+
     rem_capacity = 0
+
     voltage_decider = 0
+
     voltage_level = 0
-
-
-
-
-
 
 class travel_dist:
 
@@ -137,11 +147,13 @@ class dynamixel:
         power_left[i] = voltage[i]*current*0.001
 
 class charge:
+
     current = 0
 
     maximum = 1.8*11.1*3600
 
     current_capacity = 1.8*3600
+
     status_before = 0
 
     before = 0
@@ -270,11 +282,15 @@ def path_distance(path, increment_gain = 5):
     return length
 
 def power_to_goal(time_to_goal):
+
     power_number_right = int(robot_params.max_linvel_x*100)
+
     energy_used = 0
+
     retur = [0]*2
 
     power_number_left = power_number_right
+
     retur[1] = charge.current
 
     for i in range(int(time_to_goal)):
@@ -284,50 +300,55 @@ def power_to_goal(time_to_goal):
         power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
 
         voltage = battery.voltage_full[voltage_decider]
+
         current = power/voltage
+
         retur[0] += current*voltage
+
         retur[1] -= current
 
     return retur
 
 def power_to_dock(time_to_dock, currentCharge):
+
     power_number_right = int(robot_params.max_linvel_x*100)
+
     energy_used = 0
+
     power_number_left = power_number_right
+
     new_currentCharge = currentCharge
+
     for i in range(int(time_to_dock)):
 
         voltage_decider = int(((battery.design_current_capacity-new_currentCharge)/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
 
         power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
+
         voltage = battery.voltage_full[voltage_decider]
+
         current = power/voltage
+
         energy_used += current*voltage
+
         new_currentCharge -= current
+
     return energy_used
 
 
 def calc_power_usage(dist_to_goal, dist_to_dock):
 
-
-
-
     time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*0.8 + (dist_to_goal/(2*robot_params.max_linvel_x))*0.2
 
     time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*0.8 + (dist_to_dock/(2*robot_params.max_linvel_x))*0.2
-
 
     power_usage = [0]*3
 
     power_usage[0] = power_to_goal(time_to_goal)
 
     power_usage[1] = power_to_dock(time_to_dock,power_usage[0][1] )
-    power_usage[2] = power_usage[0][0] + power_usage[1]
 
-    #print("Estimated time to goal: {}".format(time_to_goal))
-    #print("Estimated time to station from goal: {}".format(time_to_station))
-    #print("Estimated energy usage to goal: {} J".format(power_usage[2]))
-    #print("Estimated energy usage to station from goal: {} J".format(power_usage[1]))
+    power_usage[2] = power_usage[0][0] + power_usage[1]
 
     return power_usage
 
@@ -344,11 +365,11 @@ def callback_path(path):
         travel_dist.to_goal_initial = path_distance(path, increment_gain = 1)
 
         travel_dist.counter += 1
+
     else:
 
         travel_dist.to_goal = path_distance(path, increment_gain = 1)
 
-        #print("Current distance to goal: " +str(travel_dist.to_goal))
         travel_dist.counter += 1
 
 
@@ -366,8 +387,11 @@ if __name__ == '__main__':
     rospy.init_node("path_power_predicter_node")
 
     rospy.Subscriber("/move_base/goal", MoveBaseActionGoal, callback_goal)
+
     rospy.Subscriber("move_base/NavfnROS/plan", Path, callback_path)
+
     rospy.Subscriber("/battery_charge", Float32, callback_power_comp)
+    
     rospy.Subscriber("/move_base/status", GoalStatusArray, callback_goal_status)
 
 

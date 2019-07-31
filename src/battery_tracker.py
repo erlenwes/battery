@@ -34,12 +34,11 @@ def callback_voltage(msg):
 
     for i in range(len(voltage_full)):
 
-        if msg.voltage >= voltage_full[i]:
+        if msg.voltage >= voltage_full[i-1]:
 
             percent = 1-(i*len(voltage_full)*100)
 
     pub.publish(percent)
-
     if percent < 15:
         print("Battery below 15%, please recharge battery")
 
