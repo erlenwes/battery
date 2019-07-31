@@ -234,7 +234,7 @@ def batteryCalc(current_capacity):
 
         current_capacity = new_currentCharge(current_capacity)
 
-        pub_charge.publish(current_capacity)
+        pub_charge.publish(100*current_capacity/battery.design_current_capacity)
 
         timer = battery_life(current_capacity)
 

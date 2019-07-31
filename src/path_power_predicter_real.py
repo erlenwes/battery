@@ -203,7 +203,7 @@ def callback_goal_status(goal_status):
 
                 charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
-                print("Actual battery usage: {} %".format(round((charge.before-charge.after)*100,3)))
+                print("Actual battery usage: {} %".format(round((charge.before-charge.after),3)))
 
             #If current status is goal reached just update charge_before
             if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):
@@ -291,7 +291,7 @@ def power_to_goal(time_to_goal):
 
     power_number_left = power_number_right
 
-    retur[1] = charge.current*(battery.design_current_capacity)
+    retur[1] = (charge.current*(battery.design_current_capacity))/100
 
     for i in range(int(time_to_goal)):
 
@@ -338,9 +338,9 @@ def power_to_dock(time_to_dock, currentCharge):
 
 def calc_power_usage(dist_to_goal, dist_to_dock):
 
-    time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*0.8 + (dist_to_goal/(2*robot_params.max_linvel_x))*0.2
+    time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*0.8 + (dist_to_goal/(0.5*robot_params.max_linvel_x))*0.2
 
-    time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*0.8 + (dist_to_dock/(2*robot_params.max_linvel_x))*0.2
+    time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*0.8 + (dist_to_dock/(0.5*robot_params.max_linvel_x))*0.2
 
     power_usage = [0]*3
 

@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+from __future__ import division
 import rospy
 from sensor_msgs.msg import BatteryState
 from std_msgs.msg import Float32
@@ -15,6 +16,8 @@ voltage_full = [0]*(len(voltage)-1)*int(1/inc_const)
 
 rate = rospy.Rate(1)
 
+pub = None
+
 for i in range(len(voltage)-1):
 
         inc = 0.0
@@ -29,7 +32,7 @@ for i in range(len(voltage)-1):
 
 def callback_voltage(msg):
 
-    percent = 100
+    percent = 0
 
 
     for i in range(len(voltage_full)):
@@ -37,23 +40,32 @@ def callback_voltage(msg):
         if msg.voltage >= voltage_full[i-1]:
 
             percent = 1-(i*len(voltage_full)*100)
+            break
 
     pub.publish(percent)
     if percent < 15:
+
+        print("Battery: {} %".format(percent))
+
         print("Battery below 15%, please recharge battery")
 
     elif percent < 6:
+
+        print("Battery: {} %".format(percent))
+
         print("Battery in critical condition, recharge now!")
 
     else:
         print("Battery: {} %".format(percent))
 
-    print("Reading from topic {}".format(msg.percent))
+    print("Voltage from topic {}".format(msg.voltage))
 
     rate.sleep()
 
 
 def listener():
+
+    global pub
 
     sub = rospy.Subscriber('/battery_state', BatteryState, callback_voltage)
 

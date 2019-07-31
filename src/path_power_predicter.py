@@ -338,9 +338,9 @@ def power_to_dock(time_to_dock, currentCharge):
 
 def calc_power_usage(dist_to_goal, dist_to_dock):
 
-    time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*0.8 + (dist_to_goal/(2*robot_params.max_linvel_x))*0.2
+    time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*0.8 + (dist_to_goal/(0.5*robot_params.max_linvel_x))*0.2
 
-    time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*0.8 + (dist_to_dock/(2*robot_params.max_linvel_x))*0.2
+    time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*0.8 + (dist_to_dock/(0.5*robot_params.max_linvel_x))*0.2
 
     power_usage = [0]*3
 
@@ -391,7 +391,7 @@ if __name__ == '__main__':
     rospy.Subscriber("move_base/NavfnROS/plan", Path, callback_path)
 
     rospy.Subscriber("/battery_charge", Float32, callback_power_comp)
-    
+
     rospy.Subscriber("/move_base/status", GoalStatusArray, callback_goal_status)
 
 
