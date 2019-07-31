@@ -1,5 +1,0 @@
-<launch>
-    <!-- batterymodule launch file -->
-    <node pkg="batterymodule" type="battery_estimate.py" name="battery_estimate_node" output="screen">
-    </node>
-</launch>
