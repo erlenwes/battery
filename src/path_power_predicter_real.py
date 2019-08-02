@@ -5,7 +5,7 @@ from math import sqrt
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from move_base_msgs.msg import MoveBaseActionGoal
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, String
 from actionlib_msgs.msg import GoalStatus, GoalStatusArray
 from nav_msgs.srv import GetPlan, GetPlanRequest
 
@@ -14,6 +14,7 @@ class battery:
     #Voltage levels in 5% increments from 100 - 0%
 
     voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
+
     counter = 0
 
     inc_const = 0.004
@@ -247,15 +248,33 @@ def get_path(start, goal, tol = 1):
 
     eng_path = calc_power_usage(travel_dist.to_goal_initial, travel_dist.back_to_station)
 
-    print("-------------------------------------------------------------")
+    threshold = 10
 
-    print("Initial distance to goal: {} m".format(round(travel_dist.to_goal_initial,3)))
+    if (charge.current - ((100*(eng_path[0][0]+eng_path[2]))/charge.maximum)) > threshold:
 
-    print("Dist to battery station: {} m".format(round(travel_dist.back_to_station,3)))
+        print("-------------------------------------------------------------")
 
-    print("Estimated battery required for safe operation: {}%".format(round(100*eng_path[2]/charge.maximum,2)))
+        print("Initial distance to goal: {} m".format(round(travel_dist.to_goal_initial,3)))
 
-    print("Estimated battery required for next task: {} %".format(round(100*eng_path[0][0]/charge.maximum,2)))
+        print("Dist to battery station: {} m".format(round(travel_dist.back_to_station,3)))
+
+        print("Estimated battery consumption total: {}%".format(round(100*eng_path[2]/charge.maximum,2)))
+
+        print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/charge.maximum,2)))
+
+    else:
+
+        print("-------------------------------------------------------------")
+
+        print("Battery threshold {} %".format(threshold))
+
+        print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/charge.maximum), charge.current))
+
+        print("Battery too low for this goal, choose a new goal")
+
+        pub.publish("NOE GREIER")
+
+
 
 def path_distance(path, increment_gain = 5):
 
@@ -393,6 +412,8 @@ if __name__ == '__main__':
     rospy.Subscriber("/battery_charge", Float32, callback_power_comp)
 
     rospy.Subscriber("/move_base/status", GoalStatusArray, callback_goal_status)
+
+    pub = rospy.Publisher('/status_path', String, queue_size=1)
 
 
     rospy.spin()
