@@ -200,7 +200,9 @@ def is_moving():
     power_number_left = int(speed.linear_left*100)
 
     moving = False
+    
     if power_number_right > 0 or power_number_left > 0:
+
         moving  = True
 
     return moving

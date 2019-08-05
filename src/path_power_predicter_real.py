@@ -222,6 +222,10 @@ def callback_goal_status(goal_status):
 
         except:
             print("Error with the callback goal tracker")
+            
+    elif len(goal_status.status_list) == 1:
+
+        charge.before = charge.current
 
 
 
@@ -254,13 +258,16 @@ def get_path(start, goal, tol = 1):
 
         print("-------------------------------------------------------------")
 
+        print("New goal received")
+
         print("Initial distance to goal: {} m".format(round(travel_dist.to_goal_initial,3)))
 
-        print("Dist to battery station: {} m".format(round(travel_dist.back_to_station,3)))
-
-        print("Estimated battery consumption total: {}%".format(round(100*eng_path[2]/charge.maximum,2)))
+        print("Distance from goal to charging station: {} m".format(round(travel_dist.back_to_station,3)))
 
         print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/charge.maximum,2)))
+
+        print("Estimated battery consumption required for total operation: {}%".format(round(100*eng_path[2]/charge.maximum,2)))
+
 
     else:
 
