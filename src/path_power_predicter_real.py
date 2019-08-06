@@ -323,6 +323,10 @@ def power_to_goal(time_to_goal):
 
         voltage_decider = int(((battery.design_current_capacity-retur[1])/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
 
+        if voltage_decider > len(battery.voltage_full)-1:
+
+            voltage_decider = len(battery.voltage_full)/2
+
         power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
 
         voltage = battery.voltage_full[voltage_decider]
@@ -348,6 +352,10 @@ def power_to_dock(time_to_dock, currentCharge):
     for i in range(int(time_to_dock)):
 
         voltage_decider = int(((battery.design_current_capacity-new_currentCharge)/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
+
+        if voltage_decider > len(battery.voltage_full)-1:
+
+            voltage_decider = len(battery.voltage_full)/2
 
         power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
 

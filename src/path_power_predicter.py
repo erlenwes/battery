@@ -259,9 +259,7 @@ def get_path(start, goal, tol = 1):
 
     eng_path = calc_power_usage(travel_dist.to_goal_initial, travel_dist.back_to_station)
 
-    threshold = 16
-
-    print(100*charge.current/charge.maximum)
+    threshold = 30
 
     if (100*charge.current/charge.maximum - ((100*(eng_path[0][0]+eng_path[2]))/charge.power_max)) > threshold:
 
