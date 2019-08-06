@@ -200,7 +200,7 @@ def is_moving():
     power_number_left = int(speed.linear_left*100)
 
     moving = False
-    
+
     if power_number_right > 0 or power_number_left > 0:
 
         moving  = True
@@ -307,7 +307,7 @@ if __name__ == '__main__':
 
     pub_charge = rospy.Publisher('/battery_charge', Float32, queue_size=1)
 
-    start_cap = 1.8*3600
+    start_cap = 0.6*3600
 
     battery.used_capacity = battery.design_current_capacity - start_cap
 

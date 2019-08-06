@@ -5,7 +5,7 @@ from math import sqrt
 from geometry_msgs.msg import PoseStamped
 from move_base_msgs.msg import MoveBaseActionGoal
 from nav_msgs.srv import GetPlan, GetPlanRequest
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, String
 from actionlib_msgs.msg import GoalStatus
 from actionlib_msgs.msg import GoalStatusArray
 import numpy
@@ -151,7 +151,9 @@ class charge:
 
     current = 0
 
-    maximum = 1.8*11.1*3600
+    maximum = 1.8*3600
+
+    power_max = 1.8*11.1*3600
 
     current_capacity = 1.8*3600
 
@@ -235,6 +237,8 @@ def callback_goal_status(goal_status):
 #Getting path from the current goal back to the designated charging dist_to_station
 def get_path(start, goal, tol = 1):
     #Setting the counter for travel dist = 0 so that only the initial length is taken, the always updating path is taken care of later
+
+
     travel_dist.counter = 0
 
     rospy.wait_for_service('/move_base/NavfnROS/make_plan')
@@ -255,9 +259,11 @@ def get_path(start, goal, tol = 1):
 
     eng_path = calc_power_usage(travel_dist.to_goal_initial, travel_dist.back_to_station)
 
-    threshold = 10
+    threshold = 16
 
-    if (charge.current - ((100*(eng_path[0][0]+eng_path[2]))/charge.maximum)) > threshold:
+    print(100*charge.current/charge.maximum)
+
+    if (100*charge.current/charge.maximum - ((100*(eng_path[0][0]+eng_path[2]))/charge.power_max)) > threshold:
 
         print("-------------------------------------------------------------")
 
@@ -267,9 +273,9 @@ def get_path(start, goal, tol = 1):
 
         print("Distance from goal to charging station: {} m".format(round(travel_dist.back_to_station,3)))
 
-        print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/charge.maximum,2)))
+        print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/charge.power_max,2)))
 
-        print("Estimated battery consumption required for total operation: {}%".format(round(100*eng_path[2]/charge.maximum,2)))
+        print("Estimated battery consumption required for total operation: {}%".format(round(100*eng_path[2]/charge.power_max,2)))
 
 
     else:
@@ -278,17 +284,11 @@ def get_path(start, goal, tol = 1):
 
         print("Battery threshold {} %".format(threshold))
 
-        print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/charge.maximum), charge.current))
+        print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/charge.power_max), 100*charge.current/charge.maximum))
 
         print("Battery too low for this goal, choose a new goal")
 
-        pub.publish("NOE GREIER")
-
-
-
-
-
-
+        pub.publish("DONT DO IT")
 
 
 def path_distance(path, increment_gain = 5):
@@ -332,6 +332,10 @@ def power_to_goal(time_to_goal):
 
         voltage_decider = int(((battery.design_current_capacity-retur[1])/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
 
+        if voltage_decider > len(battery.voltage_full)-1:
+
+            voltage_decider = len(battery.voltage_full)/2
+
         power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
 
         voltage = battery.voltage_full[voltage_decider]
@@ -357,6 +361,10 @@ def power_to_dock(time_to_dock, currentCharge):
     for i in range(int(time_to_dock)):
 
         voltage_decider = int(((battery.design_current_capacity-new_currentCharge)/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
+
+        if voltage_decider > len(battery.voltage_full)-1:
+
+            voltage_decider = len(battery.voltage_full)/2
 
         power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
 
@@ -391,7 +399,6 @@ def calc_power_usage(dist_to_goal, dist_to_dock):
 def callback_power_comp(capacity):
 
     charge.current = capacity.data
-
 
 def callback_path(path):
 
@@ -429,5 +436,6 @@ if __name__ == '__main__':
 
     rospy.Subscriber("/move_base/status", GoalStatusArray, callback_goal_status)
 
+    pub = rospy.Publisher('/status_path', String, queue_size=1)
 
     rospy.spin()

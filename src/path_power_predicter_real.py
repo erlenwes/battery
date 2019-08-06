@@ -222,8 +222,8 @@ def callback_goal_status(goal_status):
 
         except:
             print("Error with the callback goal tracker")
-            
-    elif len(goal_status.status_list) == 1:
+
+    elif len(goal_status.status_list) == 0:
 
         charge.before = charge.current
 
@@ -279,7 +279,7 @@ def get_path(start, goal, tol = 1):
 
         print("Battery too low for this goal, choose a new goal")
 
-        pub.publish("NOE GREIER")
+        pub.publish("DONT DO IT")
 
 
 

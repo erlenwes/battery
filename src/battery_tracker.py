@@ -51,7 +51,7 @@ def callback_voltage(msg):
 
         if msg.voltage >= voltage_full[i-1]:
 
-            percent = 1-(i*len(voltage_full)*100)
+            percent = (1-(i/len(voltage_full)))*100
             break
 
     pub.publish(percent)
