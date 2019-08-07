@@ -170,7 +170,7 @@ def distance(a, b):
 	return sqrt(del_x**2 + del_y**2)
 
 
-def load_charging_station(coord_x = -2.32499957085, coord_y = 1.19209289551e-07):
+def load_charging_station(coord_x = 0, coord_y = 0):
 
     charging_station = PoseStamped()
 
@@ -187,7 +187,7 @@ def load_charging_station(coord_x = -2.32499957085, coord_y = 1.19209289551e-07)
     charging_station.pose.orientation.y = 0.0
     #Orientation of position in charging back_to_station
     #---------------------------------------------------
-    charging_station.pose.orientation.z = -1.38615431446e-07
+    charging_station.pose.orientation.z = 0
     charging_station.pose.orientation.w = 1.0
     #---------------------------------------------------
 

@@ -11,7 +11,7 @@ def fill_voltage(voltage_full):
 
     counter = 0
 
-    inc_const = 0.004
+    inc_const = 0.002
 
     for i in range(len(voltage)-1):
 
@@ -23,7 +23,7 @@ def fill_voltage(voltage_full):
 
                 counter += 1
 
-                inc += 0.004
+                inc += 0.002
 
     return voltage_full
 
@@ -43,20 +43,73 @@ def fill_battery_station(battery_station):
     return battery_station
 
 
+
+
+def time_estimation(precent):
+
+    global data_points
+
+    diff = 0
+
+    time = [0]*2
+
+    consumption = 0
+
+    data_points.append(percent)
+
+    if len(data_points) > 10:
+
+        data_points.pop
+
+    if len(data_points) > 1:
+
+        for y in range(1,len(data_points)-1):
+
+            diff += data_points[y-1]-data_points[y]
+
+    if len(data_points) > 1:
+
+        consumption = diff/len(data_points)-1
+
+    if consumption > 0:
+
+        estimate = percent/consumption
+
+
+    time[0] = int(estimate/3600)
+    time[1] = int(estimate/60)
+
+    return time
+
+
 def callback_voltage(msg):
 
     percent = 0
 
-    for i in range(len(voltage_full)):
+    global data_points
 
-        if msg.voltage >= voltage_full[i-1]:
+    for i in range(len(voltage_full)-1):
+
+        if msg.voltage >= voltage_full[i]:
 
             percent = (1-(i/len(voltage_full)))*100
             break
 
-    pub.publish(percent)
+
+    time = time_estimation(percent)
+
+    pub_main.publish(percent)
+
+    print("Battery voltage: ".format(msg.voltage))
 
     print("Battery: {} %".format(percent))
+
+    if time[0]+time[1] == 0:
+
+        print("Estimated battery life: Initializing")
+
+    else:
+        print("Estimated battery life: {} h {} m".format(time[0], time[1]))
 
     if percent < 15:
 
@@ -73,7 +126,7 @@ if __name__ == '__main__':
 
     voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
 
-    inc_const = 0.004
+    inc_const = 0.002
 
     voltage_full = [0]*(len(voltage)-1)*int(1/inc_const)
 
@@ -83,11 +136,13 @@ if __name__ == '__main__':
 
     battery_station = fill_battery_station(battery_station)
 
+    data_points = []
+
     rate = rospy.Rate(1)
 
-    sub = rospy.Subscriber('/battery_state', BatteryState, callback_voltage)
+    sub_main = rospy.Subscriber('/battery_state', BatteryState, callback_voltage)
 
-    pub = rospy.Publisher('/battery_charge', Float32, queue_size=1)
+    pub_main = rospy.Publisher('/battery_charge', Float32, queue_size=1)
 
     pub_battery = rospy.Publisher('/battery_station',PoseStamped, queue_size=1 )
 
