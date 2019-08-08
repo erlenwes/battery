@@ -2,34 +2,39 @@
 from __future__ import division
 import rospy
 from sensor_msgs.msg import BatteryState
-from std_msgs.msg import Float32
-
-
-
-
 
 def callback_voltage(msg):
 
-    f=open("/home/user/catkin_ws/src/batterymodule/example.txt","a+")
+    global voltage
+    voltage = msg.voltage
 
-    f.write("{},".format(msg.voltage))
+def voltage_slow():
+
+    f=open("/home/sunniva/catkin_ws/src/voltage.txt","a+")
+
+    f.write("{},".format(voltage))
 
     f.close()
 
-    print("Voltage: ".format(msg.voltage))
+    print("Voltage: {} ".format(voltage))
 
     rate.sleep()
 
 if __name__ == '__main__':
 
+    voltage = 0
 
     rospy.init_node('voltage_measure_node')
 
     rate = rospy.Rate(1)
 
-    sub_main = rospy.Subscriber('/battery_state', Float32, callback_voltage)
+    sub_main = rospy.Subscriber('/battery_state', BatteryState, callback_voltage)
 
-    rospy.spin()
+    while not rospy.is_shutdown():
+
+        voltage_slow()
+
+
 
 
 

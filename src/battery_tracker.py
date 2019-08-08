@@ -80,9 +80,14 @@ def time_estimation(precent):
     time[1] = int(estimate/60)
 
     return time
+def update_voltage(msg)
+
+    global robot_voltage
+
+    robot_voltage = msg.voltage
 
 
-def callback_voltage(msg):
+def voltage_track():
 
     percent = 0
 
@@ -90,7 +95,7 @@ def callback_voltage(msg):
 
     for i in range(len(voltage_full)-1):
 
-        if msg.voltage >= voltage_full[i]:
+        if robot_voltage >= voltage_full[i]:
 
             percent = (1-(i/len(voltage_full)))*100
             break
@@ -100,7 +105,7 @@ def callback_voltage(msg):
 
     pub_main.publish(percent)
 
-    print("Battery voltage: ".format(msg.voltage))
+    print("Battery voltage: ".format(robot_voltage))
 
     print("Battery: {} %".format(percent))
 
@@ -138,12 +143,17 @@ if __name__ == '__main__':
 
     data_points = []
 
+    robot_voltage = 12
+
     rate = rospy.Rate(1)
 
-    sub_main = rospy.Subscriber('/battery_state', BatteryState, callback_voltage)
+    sub_main = rospy.Subscriber('/battery_state', BatteryState, update_voltage)
 
     pub_main = rospy.Publisher('/battery_charge', Float32, queue_size=1)
 
     pub_battery = rospy.Publisher('/battery_station',PoseStamped, queue_size=1 )
 
-    rospy.spin()
+
+    while not rospy.is_shutdown():
+
+        voltage_track()
