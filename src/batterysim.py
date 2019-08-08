@@ -102,7 +102,7 @@ class battery:
 
     counter = 0
 
-    inc_const = 0.004
+    inc_const = 0.002
 
     power_usage = 0
 
@@ -111,7 +111,7 @@ class battery:
     #Linear interpolation between data points from turtlebot
     for i in range(len(voltage)-1):
 
-        inc = 0.0
+        inc = 0
 
         for y in range(int(1/inc_const)):
 
@@ -119,7 +119,7 @@ class battery:
 
             counter += 1
 
-            inc += 0.004
+            inc += 0.002
 
     design_current_capacity = 1.8*3600 #As
 
@@ -226,8 +226,9 @@ def battery_life(currentCharge):
 
         value += battery.tracker[x]/(len(battery.tracker)-1)
 
+    used_power = (3600*((value)+(battery.power_usage)))/2
 
-    value = rest_power/(3600*(value+battery.power_usage)/2)
+    value = rest_power/used_power
 
     lifetime = [0]*2
 
@@ -287,9 +288,9 @@ def batteryCalc(current_capacity):
 
         print("Battery: {}%".format(round(100*current_capacity/battery.design_current_capacity,2)))
 
-        print("Linear Speed right: {}m/s".format(speed.linear_right))
+        print("Motor speed right: {}m/s".format(speed.linear_right))
 
-        print("Linear Speed left: {}m/s".format(speed.linear_left))
+        print("Motor speed left: {}m/s".format(speed.linear_left))
 
         print("Estimated battery time remaining: {}h {}m").format(timer[0],timer[1])
 

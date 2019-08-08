@@ -206,8 +206,7 @@ def callback_goal_status(goal_status):
 
                 charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
-                print("Actual battery usage: {} %".format(round(100*(charge.before-charge.after)/charge.current_capacity,3)))
-                print("before", charge.before, "after", charge.after)
+                print("Measured battery usage: {} %".format(round(100*(charge.before-charge.after)/charge.current_capacity,3)))
 
             #If current status is goal reached just update charge_before
             if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):

@@ -1,0 +1,5 @@
+<launch>
+    <!-- batterymodule launch file -->
+    <node pkg="batterymodule" type="voltage_measure.py" name="voltage_measure_node" output="screen">
+    </node>
+</launch>
