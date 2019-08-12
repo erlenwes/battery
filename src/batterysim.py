@@ -159,7 +159,6 @@ def power_comp():
     for obj in static_power_drain.getinstances():
 
         static_power += obj.power*obj.on
-        current += obj.current*obj.on
 
     battery.power_usage = (static_power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left])
 

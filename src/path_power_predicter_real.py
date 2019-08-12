@@ -210,11 +210,18 @@ def callback_goal_status(goal_status):
 
                 robot.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
-                if round((charge.before-charge.after) > 0:
+                if round((robot.before-robot.after),3) > 0:
 
-                    print("Actual battery usage: {} %".format(round((charge.before-charge.after),3)))
+                    print("Actual battery usage: {} %".format(round((robot.before-robot.after),3)))
+
+                elif round((robot.before-robot.after),3) == 0:
+
+                    print("Distance to small for accurate battery measurement")
+
                 else:
-                    print("Distance too small for accurate battery tracking")
+
+                    print("Error: changing goal before old goal finished")
+
             #If current status is goal reached just update charge_before
             if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):
 
@@ -311,11 +318,12 @@ def path_distance(path, increment_gain = 5):
 		    index += increment_gain
 
 		else:
+            try:
 
-			length += distance(path.poses[index], path.poses[max_index])
-
-			break
-
+			    length += distance(path.poses[index], path.poses[max_index])
+			    break
+            except IndexError:
+                print("Goal out of reach")
     return length
 
 def power_to_goal(time_to_goal):
