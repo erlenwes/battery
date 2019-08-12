@@ -118,7 +118,7 @@ def voltage_track():
 
     if percent < 15:
 
-        print("Battery below 15%, please recharge battery")
+        print(" Low battery, heading back to charging station")
 
         pub_battery.publish(battery_station)
 

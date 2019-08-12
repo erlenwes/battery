@@ -8,113 +8,115 @@ from move_base_msgs.msg import MoveBaseActionGoal
 from std_msgs.msg import Float32, String
 from actionlib_msgs.msg import GoalStatus, GoalStatusArray
 from nav_msgs.srv import GetPlan, GetPlanRequest
+import weakref
 
 
-class battery:
+class battery_sim():
     #Voltage levels in 5% increments from 100 - 0%
+    def __init__(self, type,cells,voltage_curve):
+        self.type = type
+        self.cells = cells
+        self.voltage_full = voltage_curve
 
-    voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
 
-    counter = 0
-
-    inc_const = 0.004
-
-    power_usage = 0
-
-    voltage_full = [0]*(len(voltage)-1)*int(1/inc_const)
-
-    #Linear interpolation between data points from turtlebot
-
-    for i in range(len(voltage)-1):
-
-        inc = 0.0
-
-        for y in range(int(1/inc_const)):
-
-            voltage_full[counter] = voltage[i]+(inc*(voltage[i+1]-voltage[i])/((y+1)-y))
-
-            counter += 1
-
-            inc += 0.004
-
-    design_current_capacity = 1.8*3600 #As
-
+    design_current_capacity = 1.8*3600
     used_capacity = 0
-
+    power_usage = 0
     #Voltage level decided by capacity-voltage curve relationship
+
+    voltage_decider = 0
+    voltage_level = 0
 
     rem_capacity = 0
 
-    voltage_decider = 0
 
-    voltage_level = 0
+class robot_params():
 
-class travel_dist:
+    def __init__(self,name,maximum, power_max, current_capacity, before):
+        self.name = name
+        self.maximum = maximum
+        self.power_max = power_max
+        self.current_capacity = current_capacity
+        self.before = before
+        self.max_linvel_x = (rospy.get_param('/move_base/DWAPlannerROS/max_vel_x')) #m/s
+        self.max_linacc_x = (rospy.get_param('/move_base/DWAPlannerROS/acc_lim_x'))  #m/s^2
+        self.max_angvel_z = (rospy.get_param('/move_base/DWAPlannerROS/max_rot_vel')) #rad/s
 
-    to_goal_initial = 0
-
-    to_goal = 0
-
-    back_to_station = 0
-
-    counter = 0
-
-class robot_params:
-
-    max_linvel_x = (rospy.get_param('/move_base/DWAPlannerROS/max_vel_x')) #m/s
-
-    max_linacc_x = (rospy.get_param('/move_base/DWAPlannerROS/acc_lim_x'))  #m/s^2
-
-    max_angvel_z = (rospy.get_param('/move_base/DWAPlannerROS/max_rot_vel')) #rad/s
-
-
-class sensor:
-
-    voltage = 5
-
-    current = 400 #mA
-
-    power = voltage*current*0.001
-
-class camera:
-
-    voltage = 0
 
     current = 0
+    status_before = 0
+    after = 0
+    to_goal_initial = 0
+    to_goal = 0
+    back_to_station = 0
+    counter = 0
 
-    power = voltage * current*0.001
 
-    on = False
+class static_power_drain():
 
-class mcu:
+    _instances = set()
 
-    voltage = 1.7
+    def __init__(self, name, voltage, current, status):
+        self.name = name
+        self.voltage = voltage
+        self.current = current
+        self.power = voltage*current*0.001
+        self.on = status
+        self._instances.add(weakref.ref(self))
 
-    current = 100
+    @classmethod
+    def getinstances(cls):
+        dead = set()
+        for ref in cls._instances:
+            obj = ref()
+            if obj is not None:
+                yield obj
+            else:
+                dead.add(ref)
+        cls._instances -= dead
 
-    power = voltage*current*0.001
 
-class raspi:
+class dynamic_power_drain():
 
-    voltage_bp = 5
+    _instances = set()
 
-    current_bp = 950 #mA
+    def __init__(self, name, voltage, current, on):
+        self.name = name
+        self.voltage = voltage
+        self.current = current
+        self.power_right = [0]*len(voltage)
+        self.power_left = [0]*len(voltage)
 
-    power_bp = voltage_bp*current_bp*0.001 #W
+        for i in range(len(voltage)):
 
-class dynamixel:
+            self.power_right[i] = (voltage[i]*current[i]*0.001)
+            self.power_left[i] = (voltage[i]*current[i]*0.001)
 
+        self.on = on
+        self._instances.add(weakref.ref(self))
+
+    @classmethod
+    def getinstances(cls):
+        dead = set()
+        for ref in cls._instances:
+            obj = ref()
+            if obj is not None:
+                yield obj
+            else:
+                dead.add(ref)
+        cls._instances -= dead
+
+    speed_left = 0
+    speed_right = 0
+    speed_angular = 0
+
+def fill_dynamixel():
+
+    retur = [0]*2
     #Power consumption for linear movment speed from 0.1 - 0.26 m/s
     voltage = [0]*27
 
-    #Idle current consumption dynamixel
-    current_idle = 40 #mA
-
-    current = 400 #mA
-
-    power_right = [0]*27
-
-    power_left = [0]*27
+    current = [400]*27 #mA
 
     counter = 0
 
@@ -127,7 +129,6 @@ class dynamixel:
             voltage[counter] = 10
 
             counter += 1
-
         else:
 
             voltage[counter] = 10 + volt_inc
@@ -138,28 +139,33 @@ class dynamixel:
 
     voltage[0] = 0
 
-    power_idle = voltage[0]*current_idle*0.001
+    retur[0] = voltage
+    retur[1] = current
+    return retur
+def fill_battery():
 
+    voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
 
-    for i in range(len(voltage)):
+    inc_const = 0.002
 
-        power_right[i] = voltage[i]*current*0.001
+    counter = 0
 
-        power_left[i] = voltage[i]*current*0.001
+    voltage_full = [0]*(len(voltage)-1)*int(1/inc_const)
 
-class charge:
+    #Linear interpolation between data points from turtlebot
+    for i in range(len(voltage)-1):
 
-    current = 100
+        inc = 0
 
-    maximum = 1.8*11.1*3600
+        for y in range(int(1/inc_const)):
 
-    current_capacity = 1.8*3600
+            voltage_full[counter] = voltage[i]+(inc*(voltage[i+1]-voltage[i])/((y+1)-y))
 
-    status_before = 0
+            counter += 1
 
-    before = 0
+            inc += 0.002
 
-    after = 0
+    return voltage_full
 
 def distance(a, b):
 
@@ -170,7 +176,7 @@ def distance(a, b):
 	return sqrt(del_x**2 + del_y**2)
 
 
-def load_charging_station(coord_x = 0, coord_y = 0):
+def load_charging_station(coord_x, coord_y):
 
     charging_station = PoseStamped()
 
@@ -200,39 +206,44 @@ def callback_goal_status(goal_status):
     if len(goal_status.status_list) >= 1:
         try:
 
-            if ((goal_status.status_list[len(goal_status.status_list)-1].status) == 3 and (charge.status_before == 1)):
+            if ((goal_status.status_list[len(goal_status.status_list)-1].status) == 3 and (robot.status_before == 1)):
 
-                charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+                robot.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
-                print("Actual battery usage: {} %".format(round((charge.before-charge.after),3)))
+                if round((charge.before-charge.after) > 0:
 
+                    print("Actual battery usage: {} %".format(round((charge.before-charge.after),3)))
+                else:
+                    print("Distance too small for accurate battery tracking")
             #If current status is goal reached just update charge_before
             if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):
 
-                charge.before = charge.current
+                robot.before = robot.current
 
-                charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+                robot.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
             #If current status is moving then update charge.after until the new status is goal reached
             if (goal_status.status_list[len(goal_status.status_list)-1].status) == 1:
 
-                charge.after = charge.current
+                robot.after = robot.current
 
-                charge.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
+                robot.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
         except:
             print("Error with the callback goal tracker")
 
     elif len(goal_status.status_list) == 0:
 
-        charge.before = charge.current
+        robot.before = robot.current
 
 
 
 #Getting path from the current goal back to the designated charging dist_to_station
 def get_path(start, goal, tol = 1):
     #Setting the counter for travel dist = 0 so that only the initial length is taken, the always updating path is taken care of later
-    travel_dist.counter = 0
+    robot.counter = 0
+
+    charging_station = load_charging_station(0,0)
 
     rospy.wait_for_service('/move_base/NavfnROS/make_plan')
 
@@ -248,25 +259,25 @@ def get_path(start, goal, tol = 1):
 
     path = connection_service(param)
 
-    travel_dist.back_to_station = path_distance(path.plan, increment_gain = 1)
+    robot.back_to_station = path_distance(path.plan, increment_gain = 1)
 
-    eng_path = calc_power_usage(travel_dist.to_goal_initial, travel_dist.back_to_station)
+    eng_path = calc_power_usage(robot.to_goal_initial, robot.back_to_station)
 
     threshold = 10
 
-    if (charge.current - ((100*(eng_path[0][0]+eng_path[2]))/charge.maximum)) > threshold:
+    if (robot.current - ((100*(eng_path[0][0]+eng_path[2]))/robot.maximum)) > threshold:
 
         print("-------------------------------------------------------------")
 
         print("New goal received")
 
-        print("Initial distance to goal: {} m".format(round(travel_dist.to_goal_initial,3)))
+        print("Initial distance to goal: {} m".format(round(robot.to_goal_initial,3)))
 
-        print("Distance from goal to charging station: {} m".format(round(travel_dist.back_to_station,3)))
+        print("Distance from goal to charging station: {} m".format(round(robot.back_to_station,3)))
 
-        print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/charge.maximum,2)))
+        print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/robot.maximum,2)))
 
-        print("Estimated battery consumption required for total operation: {}%".format(round(100*eng_path[2]/charge.maximum,2)))
+        print("Estimated battery consumption required for total operation: {}%".format(round(100*eng_path[2]/robot.maximum,2)))
 
 
     else:
@@ -275,11 +286,11 @@ def get_path(start, goal, tol = 1):
 
         print("Battery threshold {} %".format(threshold))
 
-        print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/charge.maximum), charge.current))
+        print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/robot.maximum), robot.current))
 
         print("Battery too low for this goal, choose a new goal")
 
-        pub.publish("DONT DO IT")
+        pub.publish(charging_station)
 
 
 
@@ -309,7 +320,7 @@ def path_distance(path, increment_gain = 5):
 
 def power_to_goal(time_to_goal):
 
-    power_number_right = int(robot_params.max_linvel_x*100)
+    power_number_right = int(robot.max_linvel_x*100)
 
     energy_used = 0
 
@@ -317,17 +328,22 @@ def power_to_goal(time_to_goal):
 
     power_number_left = power_number_right
 
-    retur[1] = (charge.current*(battery.design_current_capacity))/100
+    retur[1] = (robot.current*(battery.design_current_capacity))/100
 
     for i in range(int(time_to_goal)):
+        static_power = 0
 
-        voltage_decider = int(((battery.design_current_capacity-retur[1])/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
+        voltage_decider = int((battery.used_capacity/battery.design_current_capacity)*len(battery.voltage_full))
 
         if voltage_decider > len(battery.voltage_full)-1:
 
             voltage_decider = len(battery.voltage_full)/2
 
-        power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
+        for obj in static_power_drain.getinstances():
+
+                static_power += obj.power*obj.on
+
+        power = (static_power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left])
 
         voltage = battery.voltage_full[voltage_decider]
 
@@ -341,7 +357,7 @@ def power_to_goal(time_to_goal):
 
 def power_to_dock(time_to_dock, currentCharge):
 
-    power_number_right = int(robot_params.max_linvel_x*100)
+    power_number_right = int(robot.max_linvel_x*100)
 
     energy_used = 0
 
@@ -351,13 +367,19 @@ def power_to_dock(time_to_dock, currentCharge):
 
     for i in range(int(time_to_dock)):
 
-        voltage_decider = int(((battery.design_current_capacity-new_currentCharge)/battery.design_current_capacity)*(len(battery.voltage)-1)/battery.inc_const)
+        static_power = 0
+
+        voltage_decider = int(((battery.design_current_capacity-new_currentCharge)/battery.design_current_capacity)*len(battery.voltage_full))
 
         if voltage_decider > len(battery.voltage_full)-1:
 
             voltage_decider = len(battery.voltage_full)/2
 
-        power = (mcu.power+(camera.on*camera.power)+raspi.power_bp+sensor.power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left]+dynamixel.power_idle*2)*1.1
+        for obj in static_power_drain.getinstances():
+
+                static_power += obj.power*obj.on
+
+        power = (static_power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left])
 
         voltage = battery.voltage_full[voltage_decider]
 
@@ -372,9 +394,9 @@ def power_to_dock(time_to_dock, currentCharge):
 
 def calc_power_usage(dist_to_goal, dist_to_dock):
 
-    time_to_goal = (dist_to_goal/robot_params.max_linvel_x)*0.8 + (dist_to_goal/(0.5*robot_params.max_linvel_x))*0.2
+    time_to_goal = (dist_to_goal/robot.max_linvel_x)*0.8 + (dist_to_goal/(0.5*robot.max_linvel_x))*0.2
 
-    time_to_dock = (dist_to_dock/robot_params.max_linvel_x)*0.8 + (dist_to_dock/(0.5*robot_params.max_linvel_x))*0.2
+    time_to_dock = (dist_to_dock/robot.max_linvel_x)*0.8 + (dist_to_dock/(0.5*robot.max_linvel_x))*0.2
 
     power_usage = [0]*3
 
@@ -389,22 +411,22 @@ def calc_power_usage(dist_to_goal, dist_to_dock):
 
 def callback_power_comp(capacity):
 
-    charge.current = capacity.data
+    robot.current = capacity.data
 
 
 def callback_path(path):
 
-    if travel_dist.counter < 1:
+    if robot.counter < 1:
 
-        travel_dist.to_goal_initial = path_distance(path, increment_gain = 1)
+        robot.to_goal_initial = path_distance(path, increment_gain = 1)
 
         travel_dist.counter += 1
 
     else:
 
-        travel_dist.to_goal = path_distance(path, increment_gain = 1)
+        robot.to_goal = path_distance(path, increment_gain = 1)
 
-        travel_dist.counter += 1
+        robot.counter += 1
 
 
 def callback_goal(goal):
@@ -420,6 +442,20 @@ if __name__ == '__main__':
 
     rospy.init_node("path_power_predicter_real_node")
 
+    lidar = static_power_drain("lidar", 5, 400, True)
+    camera = static_power_drain("camera", 5, 250, False)
+    mcu = static_power_drain("mcu", 1.7, 100, True)
+    raspi = static_power_drain("raspi", 5, 950, True)
+    dynamixcel_vampire = static_power_drain("dynamixcel_vamp", 11, 80, True) #40mA per dynamixcel
+
+    dyna_info = fill_dynamixel()
+    dynamixel = dynamic_power_drain("dynamixel", dyna_info[0], dyna_info[1], True)
+
+    battery_voltages = fill_battery()
+    battery = battery_sim("lipo",3,battery_voltages)
+
+    robot = robot_params("turtlebot3",1.8*3600,1.8*11.1*3600,1.8*3600,1.8*3600)
+
     rospy.Subscriber("/move_base/goal", MoveBaseActionGoal, callback_goal)
 
     rospy.Subscriber("move_base/NavfnROS/plan", Path, callback_path)
@@ -428,7 +464,7 @@ if __name__ == '__main__':
 
     rospy.Subscriber("/move_base/status", GoalStatusArray, callback_goal_status)
 
-    pub = rospy.Publisher('/status_path', String, queue_size=1)
+    pub = rospy.Publisher('/status_path', PoseStamped, queue_size=1)
 
 
     rospy.spin()
