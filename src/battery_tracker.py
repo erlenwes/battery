@@ -4,6 +4,7 @@ import rospy
 from sensor_msgs.msg import BatteryState
 from std_msgs.msg import Float32
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Twist
 import weakref
 import numpy
 
@@ -150,25 +151,34 @@ def voltage_track():
 
             percent = (1-(i/len(voltage_full)))*100
             voltage_tracker = i
+
             break
+
     for y in range(len(true_voltage_full)-1):
 
         if robot_voltage >= true_voltage_full[y]:
 
             true_percent = (1-(y/len(voltage_full)))*100
+
             break
 
     time = time_estimation(robot_voltage, voltage_tracker, percent, true_percent)
 
     pub_main.publish(percent)
 
+    print("-------------------------------")
+
     print("Battery voltage:{} ".format(robot_voltage))
 
     print("Battery: {} %".format(true_percent))
 
+    print("Speed motor right {} m/s".format(dynamixel.speed_right))
+
+    print("Speed motor left {} m/s".format(dynamixel.speed_left))
+
     print("Estimated battery life: {} h {} m".format(time[0], time[1]))
 
-    if percent < 20:
+    if true_percent < 20:
 
         print(" Low battery, heading back to charging station")
 
@@ -203,7 +213,7 @@ def energy_usage(robot_voltage):
     power_number_right = int(dynamixel.speed_right*100)
 
     power_number_left = int(dynamixel.speed_left*100)
-
+    
     static_power = 0
 
     for obj in static_power_drain.getinstances():
@@ -213,7 +223,13 @@ def energy_usage(robot_voltage):
     power = (static_power+dynamixel.power_right[power_number_right]+dynamixel.power_left[power_number_left])*1.1
 
     return power
-    print("power", power)
+
+def ang_to_lin(angular):
+
+    lin = angular * 0.1435
+
+    return round(lin,2)
+
 
 def time_estimation(robot_voltage, voltage_tracker, percent, true_percent):
 
@@ -277,7 +293,7 @@ if __name__ == '__main__':
     dynamixel = dynamic_power_drain("dynamixel", dyna_info[0], dyna_info[1], True)
 
     voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
-    true_voltage = [12.25, 11,98, 11.95, 11.86, 11.82, 11.74, 11.62, 11.56, 11.53, 11.51, 11.45, 11.43, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
+    true_voltage = [12.25, 11.98, 11.95, 11.86, 11.82, 11.74, 11.62, 11.56, 11.53, 11.51, 11.45, 11.43, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
 
     step_length = 0.002
     voltage_full = [0]*(len(voltage)-1)*int(1/step_length)
@@ -296,6 +312,7 @@ if __name__ == '__main__':
     sub_main = rospy.Subscriber('/battery_state', BatteryState, update_voltage)
     pub_main = rospy.Publisher('/battery_charge', Float32, queue_size=1)
     pub_battery = rospy.Publisher('/battery_station',PoseStamped, queue_size=1 )
+    sub = rospy.Subscriber('/cmd_vel', Twist, callback_speed_calc)
 
     rate = rospy.Rate(1)
 
