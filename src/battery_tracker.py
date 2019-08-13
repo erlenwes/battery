@@ -8,18 +8,19 @@ from geometry_msgs.msg import Twist
 import weakref
 import numpy
 
+#Making a class for the static power drains in the robot
 class static_power_drain():
 
     _instances = set()
 
     def __init__(self, name, voltage, current, status):
-        self.name = name
-        self.voltage = voltage
-        self.current = current
-        self.power = voltage*current*0.001
-        self.on = status
-        self._instances.add(weakref.ref(self))
-
+        self.name = name #name on the component
+        self.voltage = voltage #V
+        self.current = current #mA
+        self.power = voltage*current*0.001 #W
+        self.on = status #True/false
+        self._instances.add(weakref.ref(self)) #Ref to itself
+#Weakref to itself so its easier to add new drais to power calcualtions
     @classmethod
     def getinstances(cls):
         dead = set()
@@ -30,24 +31,25 @@ class static_power_drain():
             else:
                 dead.add(ref)
         cls._instances -= dead
-
+#Power drains with dynamic levels, for turtlebot only dynamixel wrp rpm and torque
 class dynamic_power_drain():
 
     _instances = set()
 
     def __init__(self, name, voltage, current, on):
-        self.name = name
-        self.voltage = voltage
-        self.current = current
-        self.power_right = [0]*len(voltage)
-        self.power_left = [0]*len(voltage)
+        self.name = name #Name of the component
+        self.voltage = voltage #V
+        self.current = current #mA
+        self.power_right = [0]*len(voltage) #empty array based voltage
+        self.power_left = [0]*len(voltage) #empty array based voltage
 
+	#Power based on speed from 0-0.26 m/s, as voltage varies
         for i in range(len(voltage)):
-
+	#fillinf the array for both motors
             self.power_right[i] = (voltage[i]*current[i]*0.001)
             self.power_left[i] = (voltage[i]*current[i]*0.001)
 
-        self.on = on
+        self.on = on #True/false
         self._instances.add(weakref.ref(self))
 
     @classmethod
@@ -60,11 +62,12 @@ class dynamic_power_drain():
             else:
                 dead.add(ref)
         cls._instances -= dead
-
+    #variables to keep track of speed, to omit global variables
     speed_left = 0
     speed_right = 0
     speed_angular = 0
 
+#Filling the array for the dynamixcel
 def fill_dynamixel():
 
     retur = [0]*2
@@ -76,7 +79,7 @@ def fill_dynamixel():
     counter = 0
 
     volt_inc = 0.5
-
+    #array filled with 
     for y in numpy.arange(0, 0.27, 0.01):
 
         if y < 0.22:
@@ -99,7 +102,7 @@ def fill_dynamixel():
     return retur
 
 def fill_voltage(voltage,voltage_full,inc_const):
-
+#interpolating between each number in the array given, step length based on input
     counter = 0
 
     for i in range(len(voltage)-1):
@@ -117,15 +120,15 @@ def fill_voltage(voltage,voltage_full,inc_const):
     return voltage_full
 
 def fill_battery_station(battery_station):
-
+#Setting the location of the battery station in a PostStamped data type
     battery_station.header.seq = 0
     battery_station.header.stamp = rospy.Time.now()
-    battery_station.header.frame_id = "map"
+    battery_station.header.frame_id = "map" #name of the map
     battery_station.pose.position.x = 0
     battery_station.pose.position.y = 0
     battery_station.pose.position.z = 0.0
-    battery_station.pose.orientation.x = 0.0
-    battery_station.pose.orientation.y = 0.0
+    battery_station.pose.orientation.x = 0.0 #x coord in the costmap
+    battery_station.pose.orientation.y = 0.0 #y coord in the costmap
     battery_station.pose.orientation.z = 0
     battery_station.pose.orientation.w = 1.0
 
@@ -134,17 +137,17 @@ def fill_battery_station(battery_station):
 
 
 def update_voltage(msg):
-
+#Updating the actual voltage level read from the robot
     global robot_voltage
 
     robot_voltage = msg.voltage
 
-
+#The main fucntion of the program
 def voltage_track():
 
     percent = 0
-    voltage_tracker = 0
-
+    voltage_tracker = 0 #index in the voltage arary for keeping track of voltage outside of func
+    #Comparing the voltage of the robot to the voltage level in the battery array, breaking the loop when the voltage mathces, then finding the percentage based on the SOC vs votlage curve
     for i in range(len(voltage_full)-1):
 
         if robot_voltage >= voltage_full[i]:
@@ -153,7 +156,7 @@ def voltage_track():
             voltage_tracker = i
 
             break
-
+    #Comparing the voltage of the battery for display purposes. As current increases the SOC will change, for this lipo battery the max charge is 12.2 voltage, but the capacity will be eq to a 80% 12.6 battery.
     for y in range(len(true_voltage_full)-1):
 
         if robot_voltage >= true_voltage_full[y]:
@@ -161,11 +164,12 @@ def voltage_track():
             true_percent = (1-(y/len(voltage_full)))*100
 
             break
-
+    #Estimating the remaining battery time for the robot
     time = time_estimation(robot_voltage, voltage_tracker, percent, true_percent)
-
+    #publishing the battery percentage to a topic, for use in path_predictor
     pub_main.publish(percent)
-
+    
+    #Printing the values
     print("-------------------------------")
 
     print("Battery voltage:{} ".format(robot_voltage))
@@ -177,7 +181,8 @@ def voltage_track():
     print("Speed motor left {} m/s".format(dynamixel.speed_left))
 
     print("Estimated battery life: {} h {} m".format(time[0], time[1]))
-
+    
+    #Sending the robot back to the station when battery below a threshold
     if true_percent < 20:
 
         print(" Low battery, heading back to charging station")
@@ -185,20 +190,25 @@ def voltage_track():
         pub_battery.publish(battery_station)
 
     rate.sleep()
+
+#Calculating speed of each motor based on linear and angular speed
 def callback_speed_calc(velocity):
 
-    dynamixel.speed_right = abs(velocity.linear.x)
+    dynamixel.speed_right = abs(velocity.linear.x) #m/s
 
-    dynamixel.speed_angular = abs(velocity.angular.z)
-
-    dynamixel.speed_left = dynamixel.speed_right + ang_to_lin(dynamixel.speed_angular)
-
+    dynamixel.speed_angular = abs(velocity.angular.z)#rad/s
+    #Assuming the same motor always adjusing for the turning
+    dynamixel.speed_left = dynamixel.speed_right + ang_to_lin(dynamixel.speed_angular)#m/s  
+    
+    #when rotating on the spot, right and left motor have the same speed
     if dynamixel.speed_angular > 0  and dynamixel.speed_right == 0:
 
         dynamixel.speed_right = ang_to_lin(dynamixel.speed_angular)
 
         dynamixel.speed_left = dynamixel.speed_right
-
+    
+    #when turning with linear speed, increase one motor speed equal to the inc in ang speed
+    #if max speed decrease the other speed or reverse
     if dynamixel.speed_left > 0.26:
 
         rest_speed = dynamixel.speed_left - 0.26
@@ -207,15 +217,16 @@ def callback_speed_calc(velocity):
 
         dynamixel.speed_right  = abs(dynamixel.speed_right - rest_speed)
 
-
+#calculating the energy used by the robot for use in time estimation
 def energy_usage(robot_voltage):
 
-    power_number_right = int(dynamixel.speed_right*100)
+    power_number_right = int(dynamixel.speed_right*100) #transforming the speed of the robot to an index in the voltage-speed array
 
     power_number_left = int(dynamixel.speed_left*100)
     
-    static_power = 0
+    static_power = 0 #defining the variable
 
+    #adding the power from all the static drains, chekcing if active or not
     for obj in static_power_drain.getinstances():
 
         static_power += obj.power*obj.on
@@ -224,6 +235,7 @@ def energy_usage(robot_voltage):
 
     return power
 
+#trasforming angular speed(rad/s) to linear speed (m/s)
 def ang_to_lin(angular):
 
     lin = angular * 0.1435

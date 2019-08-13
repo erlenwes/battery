@@ -17,17 +17,15 @@ class battery_sim():
         self.type = type
         self.cells = cells
         self.voltage_full = voltage_curve
+	self.design_Current_capacity = 1.8*3600
+	self.used_capacity = 0
+	self.power_usage = 0
+	self.voltage_decider = 0
+	self.voltage_level = 0
+	self.rem_capacity = 0
 
-
-    design_current_capacity = 1.8*3600
-    used_capacity = 0
-    power_usage = 0
+    
     #Voltage level decided by capacity-voltage curve relationship
-
-    voltage_decider = 0
-    voltage_level = 0
-
-    rem_capacity = 0
 
 
 class robot_params():
@@ -41,15 +39,13 @@ class robot_params():
         self.max_linvel_x = (rospy.get_param('/move_base/DWAPlannerROS/max_vel_x')) #m/s
         self.max_linacc_x = (rospy.get_param('/move_base/DWAPlannerROS/acc_lim_x'))  #m/s^2
         self.max_angvel_z = (rospy.get_param('/move_base/DWAPlannerROS/max_rot_vel')) #rad/s
-
-
-    current = 0
-    status_before = 0
-    after = 0
-    to_goal_initial = 0
-    to_goal = 0
-    back_to_station = 0
-    counter = 0
+        self.current = 0
+	self.status_before = 0
+	self.after = 0
+	self.to_goal_initial = 0
+	self.to_goal = 0
+	self.back_to_station = 0
+	self.counter = 0
 
 
 class static_power_drain():
@@ -94,7 +90,9 @@ class dynamic_power_drain():
 
         self.on = on
         self._instances.add(weakref.ref(self))
-
+	self.speed_left = 0
+	self.speed_right = 0
+	self.speed_angular = 0
     @classmethod
     def getinstances(cls):
         dead = set()
@@ -105,10 +103,6 @@ class dynamic_power_drain():
             else:
                 dead.add(ref)
         cls._instances -= dead
-
-    speed_left = 0
-    speed_right = 0
-    speed_angular = 0
 
 def fill_dynamixel():
 
@@ -212,15 +206,15 @@ def callback_goal_status(goal_status):
 
                 if round((robot.before-robot.after),3) > 0:
 
-                    print("Actual battery usage: {} %".format(round((robot.before-robot.after),3)))
+                    print("Measured battery usage: {} %".format(round((robot.before-robot.after),3)))
 
                 elif round((robot.before-robot.after),3) == 0:
 
-                    print("Distance to small for accurate battery measurement")
+                    print("Distance to short for accurate battery measurement")
 
                 else:
 
-                    print("Error: changing goal before old goal finished")
+                    print("Error: Distance too short or changing goal before old goal finished")
 
             #If current status is goal reached just update charge_before
             if (goal_status.status_list[len(goal_status.status_list)-1].status == 3):
@@ -295,7 +289,7 @@ def get_path(start, goal, tol = 1):
 
         print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/robot.maximum), robot.current))
 
-        print("Battery too low for this goal, choose a new goal")
+        print("Battery too low for this goal, returning to station")
 
         pub.publish(charging_station)
 
@@ -318,12 +312,11 @@ def path_distance(path, increment_gain = 5):
 		    index += increment_gain
 
 		else:
-            try:
-
-			    length += distance(path.poses[index], path.poses[max_index])
-			    break
-            except IndexError:
-                print("Goal out of reach")
+                    try:
+		        length += distance(path.poses[index], path.poses[max_index])
+		        break
+            	    except IndexError:
+                        print("Goal out of reach")
     return length
 
 def power_to_goal(time_to_goal):
