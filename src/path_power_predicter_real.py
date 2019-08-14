@@ -17,7 +17,7 @@ class battery_sim():
         self.type = type
         self.cells = cells
         self.voltage_full = voltage_curve
-	self.design_Current_capacity = 1.8*3600
+	self.design_current_capacity = 1.8*3600
 	self.used_capacity = 0
 	self.power_usage = 0
 	self.voltage_decider = 0
@@ -204,7 +204,7 @@ def callback_goal_status(goal_status):
 
                 robot.status_before = (goal_status.status_list[len(goal_status.status_list)-1].status)
 
-                if round((robot.before-robot.after),3) > 0:
+                if round((robot.before-robot.after),3) > 0 and round((robot.before-robot.after),3) < 100:
 
                     print("Measured battery usage: {} %".format(round((robot.before-robot.after),3)))
 
@@ -264,9 +264,9 @@ def get_path(start, goal, tol = 1):
 
     eng_path = calc_power_usage(robot.to_goal_initial, robot.back_to_station)
 
-    threshold = 10
+    threshold = 25
 
-    if (robot.current - ((100*(eng_path[0][0]+eng_path[2]))/robot.maximum)) > threshold:
+    if (robot.current - ((100*(eng_path[0][0]+eng_path[2]))/robot.power_max)) > threshold:
 
         print("-------------------------------------------------------------")
 
@@ -276,9 +276,9 @@ def get_path(start, goal, tol = 1):
 
         print("Distance from goal to charging station: {} m".format(round(robot.back_to_station,3)))
 
-        print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/robot.maximum,2)))
+        print("Estimated battery consumption for next goal: {} %".format(round(100*eng_path[0][0]/robot.power_max,2)))
 
-        print("Estimated battery consumption required for total operation: {}%".format(round(100*eng_path[2]/robot.maximum,2)))
+        print("Estimated battery consumption required for total operation: {}%".format(round(100*eng_path[2]/robot.power_max,2)))
 
 
     else:
@@ -287,7 +287,7 @@ def get_path(start, goal, tol = 1):
 
         print("Battery threshold {} %".format(threshold))
 
-        print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/robot.maximum), robot.current))
+        print("Estimated battery usage for next goal and return is {} %, current battery is at {} %".format(((100*(eng_path[0][0]+eng_path[2]))/robot.power_max), robot.current))
 
         print("Battery too low for this goal, returning to station")
 
@@ -317,6 +317,7 @@ def path_distance(path, increment_gain = 5):
 		        break
             	    except IndexError:
                         print("Goal out of reach")
+                        break
     return length
 
 def power_to_goal(time_to_goal):
@@ -395,9 +396,9 @@ def power_to_dock(time_to_dock, currentCharge):
 
 def calc_power_usage(dist_to_goal, dist_to_dock):
 
-    time_to_goal = (dist_to_goal/robot.max_linvel_x)*0.8 + (dist_to_goal/(0.5*robot.max_linvel_x))*0.2
+    time_to_goal = (dist_to_goal/robot.max_linvel_x)*0.9 + (dist_to_goal/(0.5*robot.max_linvel_x))*0.1
 
-    time_to_dock = (dist_to_dock/robot.max_linvel_x)*0.8 + (dist_to_dock/(0.5*robot.max_linvel_x))*0.2
+    time_to_dock = (dist_to_dock/robot.max_linvel_x)*0.9 + (dist_to_dock/(0.5*robot.max_linvel_x))*0.1
 
     power_usage = [0]*3
 
@@ -421,7 +422,7 @@ def callback_path(path):
 
         robot.to_goal_initial = path_distance(path, increment_gain = 1)
 
-        travel_dist.counter += 1
+        robot.counter += 1
 
     else:
 
@@ -432,7 +433,7 @@ def callback_path(path):
 
 def callback_goal(goal):
 
-    charging_station = load_charging_station(coord_x = -2.32499957085, coord_y = 1.19209289551e-07)
+    charging_station = load_charging_station(coord_x = 0, coord_y = 0)
 
     get_path(goal.goal.target_pose, charging_station, tol = 1)
 

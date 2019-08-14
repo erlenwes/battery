@@ -10,7 +10,7 @@ def callback_voltage(msg):
 
 def voltage_slow():
 
-    f=open("/home/sunniva/catkin_ws/src/voltage.txt","a+")
+    f=open("/home/student/catkin_ws/src/voltage_idle_full.txt","a+")
 
     f.write("{},".format(voltage))
 
@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     rospy.init_node('voltage_measure_node')
 
-    rate = rospy.Rate(1)
+    rate = rospy.Rate(1/60)
 
     sub_main = rospy.Subscriber('/battery_state', BatteryState, callback_voltage)
 

@@ -167,7 +167,7 @@ def voltage_track():
     #Estimating the remaining battery time for the robot
     time = time_estimation(robot_voltage, voltage_tracker, percent, true_percent)
     #publishing the battery percentage to a topic, for use in path_predictor
-    pub_main.publish(percent)
+    pub_main.publish(true_percent)
     
     #Printing the values
     print("-------------------------------")
@@ -305,7 +305,7 @@ if __name__ == '__main__':
     dynamixel = dynamic_power_drain("dynamixel", dyna_info[0], dyna_info[1], True)
 
     voltage = [12.6, 12.45, 12.33, 12.25, 12.07, 11.95, 11.86, 11.74, 11.62, 11.56, 11.51, 11.45, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
-    true_voltage = [12.25, 11.98, 11.95, 11.86, 11.82, 11.74, 11.62, 11.56, 11.53, 11.51, 11.45, 11.43, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9.82] #V
+    true_voltage = [12.25, 11.98, 11.95, 11.86, 11.82, 11.74, 11.62, 11.56, 11.53, 11.51, 11.45, 11.43, 11.39, 11.36, 11.30, 11.24, 11.18, 11.12, 11.06, 10.83, 9] #V
 
     step_length = 0.002
     voltage_full = [0]*(len(voltage)-1)*int(1/step_length)
