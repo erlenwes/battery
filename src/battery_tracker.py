@@ -172,15 +172,15 @@ def voltage_track():
     #Printing the values
     print("-------------------------------")
 
-    print("Battery voltage:{} ".format(robot_voltage))
+    print("Battery voltage: {}V".format(round(robot_voltage,3)))
 
-    print("Battery: {} %".format(true_percent))
+    print("Battery percentage: {}%".format(true_percent))
 
-    print("Speed motor right {} m/s".format(dynamixel.speed_right))
+    print("Speed motor right: {}m/s".format(dynamixel.speed_right))
 
-    print("Speed motor left {} m/s".format(dynamixel.speed_left))
+    print("Speed motor left: {}m/s".format(dynamixel.speed_left))
 
-    print("Estimated battery life: {} h {} m".format(time[0], time[1]))
+    print("Estimated battery life: {}h {}m".format(time[0], time[1]))
     
     #Sending the robot back to the station when battery below a threshold
     if true_percent < 20:
@@ -245,8 +245,6 @@ def ang_to_lin(angular):
 
 def time_estimation(robot_voltage, voltage_tracker, percent, true_percent):
 
-    global real_array_counter
-    global real_array
     power = energy_usage(robot_voltage)
     real_percentage_use = 0
     true_lifetime = [0]*2
@@ -255,24 +253,6 @@ def time_estimation(robot_voltage, voltage_tracker, percent, true_percent):
     value = 0
 
     rest_power = 0
-
-
-    if real_array_counter % 180 == 0 and real_array_counter <= 180:
-        real_array.append(true_percent)
-
-    elif real_array_counter % 180 == 0:
-
-        real_array.append(true_percent)
-        real_array.pop()
-        real_percentage_use = real_array[0]-real_array[1]
-        real_percentage_use = real_percentage_use/60
-
-    if real_percentage_use > 0:
-        true_time = true_percent/real_percentage_use
-        true_lifetime[0] = int(true_time/3600)
-        true_lifetime[1] = int(((true_time/3600)%1)*60)
-        print("Measued battery life: {} h {} m".format(true_lifetime[0], true_lifetime[1]))
-
 
 
     for i in range(voltage_tracker, len(voltage_full)-1):
@@ -286,8 +266,6 @@ def time_estimation(robot_voltage, voltage_tracker, percent, true_percent):
     lifetime[0] = int(value/3600)
 
     lifetime[1] = int(((value/3600)%1)*60)
-
-    real_array_counter += 1
 
     return lifetime
 
@@ -313,8 +291,6 @@ if __name__ == '__main__':
     true_voltage_full = [0]*(len(true_voltage)-1)*int(1/step_length)
     true_voltage_full = fill_voltage(true_voltage,true_voltage_full, step_length)
 
-    real_array = []
-    real_array_counter = 0
     power = 0
     robot_voltage = 12.2
 

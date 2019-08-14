@@ -12,7 +12,7 @@ import weakref
 
 
 class battery_sim():
-    #Voltage levels in 5% increments from 100 - 0%
+
     def __init__(self, type,cells,voltage_curve):
         self.type = type
         self.cells = cells
